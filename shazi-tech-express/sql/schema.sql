@@ -1,0 +1,61 @@
+CREATE DATABASE IF NOT EXISTS shazi_tech_express CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE shazi_tech_express;
+
+CREATE TABLE users (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ name VARCHAR(120) NOT NULL, email VARCHAR(190) NOT NULL UNIQUE, phone VARCHAR(30),
+ password_hash VARCHAR(255) NOT NULL, role ENUM('user','admin') NOT NULL DEFAULT 'user',
+ referral_code VARCHAR(30) NOT NULL UNIQUE, referred_by BIGINT UNSIGNED NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ INDEX(referred_by), FOREIGN KEY(referred_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+CREATE TABLE wallets (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, user_id BIGINT UNSIGNED NOT NULL UNIQUE,
+ balance DECIMAL(15,2) NOT NULL DEFAULT 0.00, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+CREATE TABLE wallet_transactions (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, user_id BIGINT UNSIGNED NOT NULL,
+ type ENUM('credit','debit') NOT NULL, amount DECIMAL(15,2) NOT NULL, reference VARCHAR(100) NOT NULL UNIQUE,
+ description VARCHAR(255), status ENUM('pending','successful','failed','reversed') NOT NULL DEFAULT 'successful',
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX(user_id,created_at),
+ FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+CREATE TABLE funding_transactions (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, user_id BIGINT UNSIGNED NOT NULL,
+ reference VARCHAR(100) NOT NULL UNIQUE, amount DECIMAL(15,2) NOT NULL, provider_reference VARCHAR(120),
+ status ENUM('pending','successful','failed') NOT NULL DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE, INDEX(user_id,created_at)
+) ENGINE=InnoDB;
+CREATE TABLE data_plans (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, network VARCHAR(30) NOT NULL, provider_plan_id VARCHAR(100) NOT NULL,
+ name VARCHAR(150) NOT NULL, cost_price DECIMAL(15,2) NOT NULL, sell_price DECIMAL(15,2) NOT NULL,
+ active TINYINT(1) NOT NULL DEFAULT 1, UNIQUE KEY uq_plan(network,provider_plan_id), INDEX(network,active)
+) ENGINE=InnoDB;
+CREATE TABLE data_transactions (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, user_id BIGINT UNSIGNED NOT NULL,
+ wallet_transaction_id BIGINT UNSIGNED NULL, network VARCHAR(30) NOT NULL, phone VARCHAR(30) NOT NULL,
+ plan VARCHAR(150) NOT NULL, provider_plan_id VARCHAR(100), amount DECIMAL(15,2) NOT NULL,
+ cost_amount DECIMAL(15,2) NULL, provider_reference VARCHAR(120), status ENUM('pending','successful','failed','reversed') NOT NULL DEFAULT 'pending',
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX(user_id,created_at),
+ FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+ FOREIGN KEY(wallet_transaction_id) REFERENCES wallet_transactions(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+CREATE TABLE service_transactions (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, user_id BIGINT UNSIGNED NOT NULL,
+ service ENUM('airtime','electricity','tv') NOT NULL, customer VARCHAR(80) NOT NULL, network VARCHAR(50) NULL,
+ package_name VARCHAR(150) NULL, amount DECIMAL(15,2) NOT NULL, cost_amount DECIMAL(15,2) NULL,
+ reference VARCHAR(100) NOT NULL UNIQUE, provider_reference VARCHAR(120) NULL,
+ status ENUM('pending','successful','failed','reversed') NOT NULL DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ INDEX(user_id,created_at), FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+CREATE TABLE referrals (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, referrer_id BIGINT UNSIGNED NOT NULL, referred_id BIGINT UNSIGNED NOT NULL UNIQUE,
+ bonus DECIMAL(15,2) NOT NULL DEFAULT 0, status ENUM('pending','paid') NOT NULL DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(referrer_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY(referred_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+CREATE TABLE notifications (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, user_id BIGINT UNSIGNED NOT NULL,
+ title VARCHAR(150) NOT NULL, message TEXT NOT NULL, is_read TINYINT(1) NOT NULL DEFAULT 0,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX(user_id,is_read,created_at), FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
